@@ -10,7 +10,15 @@
     "lint": "next lint",
     "test": "tsx --test tests/*.test.ts",
     "seed": "tsx prisma/seed.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:deploy:prod": "prisma migrate deploy --schema=prisma/schema.postgresql.prisma",
+    "db:push:prod": "prisma db push --schema=prisma/schema.postgresql.prisma",
     "postinstall": "prisma generate"
+  },
+  "engines": {
+    "node": ">=18.17.0"
   },
 
   "dependencies": {

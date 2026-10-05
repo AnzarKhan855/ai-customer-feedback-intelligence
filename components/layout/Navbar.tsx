@@ -95,7 +95,7 @@ export default function Navbar() {
           <Link
             href="/alerts"
             className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors relative"
-            title="Real-Time Anomaly Alerts"
+            title="Anomaly Alerts"
           >
             <Bell className="w-4 h-4 text-slate-600 dark:text-slate-300" />
             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
