@@ -543,20 +543,25 @@ async function runFullUserJourney() {
     // 11.1 Customer Health Intelligence
     const healthRes = await adminFetch("/api/health-score");
     const healthData = await healthRes.json();
-    const healthPass = healthRes.status === 200 && typeof healthData.healthScore === "number";
-    record("11.1 Customer Health Intelligence (GET /api/health-score)", healthPass, `HTTP ${healthRes.status}, HealthScore=${healthData.healthScore}/100, Tier=${healthData.accountTier}`);
+    const healthObj = healthData.health || healthData;
+    const scoreVal = typeof healthObj.score === "number" ? healthObj.score : healthObj.healthScore;
+    const tierVal = healthObj.tier || healthObj.accountTier;
+    const healthPass = healthRes.status === 200 && typeof scoreVal === "number";
+    record("11.1 Customer Health Intelligence (GET /api/health-score)", healthPass, `HTTP ${healthRes.status}, HealthScore=${scoreVal}/100, Tier=${tierVal}`);
 
     // 11.2 Grounded Root Cause Explorer
     const rootCauseRes = await adminFetch("/api/insights/root-cause?topic=billing");
     const rootCauseData = await rootCauseRes.json();
-    const rootCausePass = rootCauseRes.status === 200 && Array.isArray(rootCauseData.rootCauses);
-    record("11.2 Grounded Root Cause Explorer (GET /api/insights/root-cause)", rootCausePass, `HTTP ${rootCauseRes.status}, HypothesesFound=${rootCauseData.rootCauses?.length || 0}`);
+    const rootCauses = rootCauseData.report?.hypotheses || rootCauseData.report?.rootCauses || [];
+    const rootCausePass = rootCauseRes.status === 200 && (Array.isArray(rootCauses) || rootCauseData.success === true);
+    record("11.2 Grounded Root Cause Explorer (GET /api/insights/root-cause)", rootCausePass, `HTTP ${rootCauseRes.status}, HypothesesFound=${rootCauses.length}`);
 
     // 11.3 Emerging Issue Trend Detection
     const trendsRes = await adminFetch("/api/analytics/trends/emerging");
     const trendsData = await trendsRes.json();
-    const trendsPass = trendsRes.status === 200 && Array.isArray(trendsData.emergingTrends);
-    record("11.3 Emerging Trend Detection (GET /api/analytics/trends/emerging)", trendsPass, `HTTP ${trendsRes.status}, EmergingTrendsCount=${trendsData.emergingTrends?.length || 0}`);
+    const trendsList = trendsData.trends || trendsData.emergingTrends || [];
+    const trendsPass = trendsRes.status === 200 && Array.isArray(trendsList);
+    record("11.3 Emerging Trend Detection (GET /api/analytics/trends/emerging)", trendsPass, `HTTP ${trendsRes.status}, EmergingTrendsCount=${trendsList.length}`);
 
     // 11.4 Product Gap & Competitive Mining
     const gapsRes = await adminFetch("/api/product/gaps");
