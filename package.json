@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "node scripts/run-tests.js",
+    "test:live": "tsx scripts/test-live-deployment.ts",
     "seed": "tsx prisma/seed.ts",
     "db:generate": "node scripts/prisma-generate.js",
     "db:generate:sqlite": "prisma generate --schema=prisma/schema.prisma",
