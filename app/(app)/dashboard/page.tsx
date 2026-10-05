@@ -9,6 +9,7 @@ import AccountRiskMatrix from "@/components/dashboard/AccountRiskMatrix";
 import AIExecutiveInsights from "@/components/dashboard/AIExecutiveInsights";
 import EmotionBreakdown from "@/components/dashboard/EmotionBreakdown";
 import SeverityBreakdown from "@/components/dashboard/SeverityBreakdown";
+import VoCSummary from "@/components/dashboard/VoCSummary";
 import {
   AreaChart,
   Area,
@@ -25,6 +26,7 @@ import {
 } from "recharts";
 import {
   TrendingUp,
+  TrendingDown,
   MessageSquare,
   AlertTriangle,
   Smile,
@@ -151,8 +153,14 @@ export default function DashboardPage() {
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Total Signals
                   </div>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+                  <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1 flex items-baseline gap-2">
                     {data?.metrics?.totalFeedback || 0}
+                    {data?.metrics?.feedbackGrowthPct !== undefined && (
+                      <span className={`text-xs font-semibold flex items-center gap-0.5 ${data.metrics.feedbackGrowthPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}>
+                        {data.metrics.feedbackGrowthPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {data.metrics.feedbackGrowthPct > 0 ? `+${data.metrics.feedbackGrowthPct}%` : `${data.metrics.feedbackGrowthPct}%`}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -170,8 +178,16 @@ export default function DashboardPage() {
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Net Sentiment (NPS)
                   </div>
-                  <div className={`text-2xl font-bold mt-1 ${netScore >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                    {netScore > 0 ? `+${netScore}` : netScore}
+                  <div className="text-2xl font-bold mt-1 flex items-baseline gap-2">
+                    <span className={netScore >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+                      {netScore > 0 ? `+${netScore}` : netScore}
+                    </span>
+                    {data?.metrics?.sentimentDeltaPct !== undefined && (
+                      <span className={`text-xs font-semibold flex items-center gap-0.5 ${data.metrics.sentimentDeltaPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+                        {data.metrics.sentimentDeltaPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {data.metrics.sentimentDeltaPct > 0 ? `+${data.metrics.sentimentDeltaPct} pts` : `${data.metrics.sentimentDeltaPct} pts`}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {posPct}% Pos vs {negPct}% Neg
@@ -219,6 +235,9 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Voice-of-Customer Intelligence Radar */}
+            <VoCSummary data={data?.vocBreakdown} />
 
             {/* Visualizations Grid 1: Volume Over Time & Sentiment Donut */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

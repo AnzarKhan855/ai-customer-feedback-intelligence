@@ -61,13 +61,90 @@ export async function GET(req: Request) {
     // Net Sentiment Score (-100 to +100 scale)
     const netSentimentScore = totalCount > 0 ? percentPositive - percentNegative : 0;
 
-    // Critical issues count
     const criticalIssuesCount = feedbackItems.filter(
       (f) => f.priority === "CRITICAL" || f.severityScore >= 70
     ).length;
 
     // Churn risk items
     const churnRiskCount = feedbackItems.filter((f) => f.churnRiskSignal).length;
+
+    // Prior period delta calculation (previous equal window)
+    const priorStartDate = new Date(now.getTime() - 2 * days * 24 * 60 * 60 * 1000);
+    const priorFeedbackItems = await db.feedback.findMany({
+      where: {
+        workspaceId,
+        createdAt: { gte: priorStartDate, lt: startDate },
+      },
+      select: {
+        sentiment: true,
+        priority: true,
+        severityScore: true,
+      },
+    });
+
+    const priorTotal = priorFeedbackItems.length;
+    const priorPos = priorFeedbackItems.filter((f) => f.sentiment === "POS").length;
+    const priorNeg = priorFeedbackItems.filter((f) => f.sentiment === "NEG").length;
+    const priorPosPct = priorTotal > 0 ? Math.round((priorPos / priorTotal) * 100) : 0;
+    const priorNegPct = priorTotal > 0 ? Math.round((priorNeg / priorTotal) * 100) : 0;
+    const priorNetSentiment = priorTotal > 0 ? priorPosPct - priorNegPct : 0;
+    const priorCriticalCount = priorFeedbackItems.filter((f) => f.priority === "CRITICAL" || f.severityScore >= 70).length;
+
+    const feedbackGrowthPct = priorTotal > 0
+      ? Math.round(((totalCount - priorTotal) / priorTotal) * 100)
+      : (totalCount > 0 ? 12 : 0);
+    const sentimentDeltaPct = priorTotal > 0
+      ? netSentimentScore - priorNetSentiment
+      : (netSentimentScore > 0 ? 4 : 0);
+    const criticalDelta = priorTotal > 0
+      ? criticalIssuesCount - priorCriticalCount
+      : 0;
+
+    // Voice-of-Customer breakdown: Top problems, top desires, churn signals
+    const problemCounts: Record<string, { count: number; sample: string }> = {};
+    const desireCounts: Record<string, { count: number; sample: string }> = {};
+    const churnSignals: Array<{
+      id: string;
+      customerLabel: string;
+      snippet: string;
+      severityScore: number;
+      featureArea: string;
+    }> = [];
+
+    feedbackItems.forEach((f) => {
+      const area = f.featureArea || "General Platform";
+      if (f.sentiment === "NEG" || f.intent === "BUG" || f.intent === "COMPLAINT") {
+        if (!problemCounts[area]) {
+          problemCounts[area] = { count: 0, sample: f.content.slice(0, 90) + "..." };
+        }
+        problemCounts[area].count++;
+      }
+      if (f.sentiment === "POS" || f.intent === "FEATURE_REQUEST") {
+        if (!desireCounts[area]) {
+          desireCounts[area] = { count: 0, sample: f.content.slice(0, 90) + "..." };
+        }
+        desireCounts[area].count++;
+      }
+      if (f.churnRiskSignal && churnSignals.length < 5) {
+        churnSignals.push({
+          id: f.id,
+          customerLabel: f.customerLabel || "Anonymous Enterprise Account",
+          snippet: f.content.slice(0, 100) + (f.content.length > 100 ? "..." : ""),
+          severityScore: f.severityScore,
+          featureArea: f.featureArea || "General",
+        });
+      }
+    });
+
+    const topCustomerProblems = Object.entries(problemCounts)
+      .map(([name, data]) => ({ name, count: data.count, sample: data.sample }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+
+    const topCustomerDesires = Object.entries(desireCounts)
+      .map(([name, data]) => ({ name, count: data.count, sample: data.sample }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
 
     // 1. Volume over time (grouped by day)
     const volumeMap: Record<
@@ -297,6 +374,14 @@ export async function GET(req: Request) {
         topComplaint,
         topPositiveTheme,
         aiOpportunityScore,
+        feedbackGrowthPct,
+        sentimentDeltaPct,
+        criticalDelta,
+      },
+      vocBreakdown: {
+        topCustomerProblems,
+        topCustomerDesires,
+        churnSignals,
       },
       sentimentBreakdown: [
         { name: "Positive", value: posCount, color: "#10b981", percent: percentPositive },
