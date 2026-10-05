@@ -25,14 +25,22 @@ export default function DatasetsPage() {
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedMetrics, setSelectedMetrics] = useState<any | null>(null);
+  const [diagnostics, setDiagnostics] = useState<any | null>(null);
 
   const fetchDatasets = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/datasets");
+      const [res, diagRes] = await Promise.all([
+        fetch("/api/datasets"),
+        fetch("/api/datasets/diagnostics"),
+      ]);
       const data = await res.json();
       if (data.datasets) {
         setDatasets(data.datasets);
+      }
+      if (diagRes.ok) {
+        const diagJson = await diagRes.json();
+        setDiagnostics(diagJson);
       }
     } catch (e) {
       console.error("Failed to load datasets:", e);
@@ -105,6 +113,49 @@ export default function DatasetsPage() {
             </button>
           </div>
         </div>
+
+        {/* Data Quality & Ingestion Operations Diagnostics Ribbon */}
+        {diagnostics && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Total Ingested</span>
+              <div className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
+                {diagnostics.totalRecordsIngested} records
+              </div>
+              <span className="text-[11px] text-slate-500">{diagnostics.totalDatasets} batches</span>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Valid Records</span>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {diagnostics.totalValidRecords}
+              </div>
+              <span className="text-[11px] text-slate-500">
+                {diagnostics.totalRecordsIngested > 0
+                  ? `${Math.round((diagnostics.totalValidRecords / diagnostics.totalRecordsIngested) * 100)}% valid`
+                  : "100% valid"}
+              </span>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Rejected / Errors</span>
+              <div className="text-xl font-bold text-rose-600 dark:text-rose-400 mt-0.5">
+                {diagnostics.totalErrorRecords}
+              </div>
+              <span className="text-[11px] text-slate-500">Flagged rows</span>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Hygiene Index</span>
+              <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                {diagnostics.averageQualityScore}/100
+              </div>
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Status: {diagnostics.overallDataHygieneRating}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Datasets Table */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
