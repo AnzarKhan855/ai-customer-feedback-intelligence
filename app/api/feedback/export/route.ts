@@ -46,9 +46,15 @@ export async function GET(req: Request) {
       "Customer",
       "Sentiment",
       "Sentiment Score",
+      "Emotion",
+      "Intent",
+      "Severity Score",
+      "Priority",
+      "Churn Risk Signal",
       "Feature Area",
       "Status",
       "Source Ref",
+      "Root Cause Hypothesis",
       "Content",
     ];
 
@@ -65,9 +71,15 @@ export async function GET(req: Request) {
       escapeCSV(item.customerLabel),
       item.sentiment,
       item.sentimentScore,
+      escapeCSV(item.emotion),
+      escapeCSV(item.intent),
+      item.severityScore ?? 0,
+      escapeCSV(item.priority),
+      item.churnRiskSignal ? "YES" : "NO",
       escapeCSV(item.featureArea),
       item.status,
       escapeCSV(item.sourceRef),
+      escapeCSV(item.rootCauseHypothesis),
       escapeCSV(item.content),
     ]);
 

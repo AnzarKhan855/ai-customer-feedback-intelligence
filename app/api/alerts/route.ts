@@ -47,3 +47,35 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Failed to update alert" }, { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  const auth = await requireAuth(["ADMIN", "ANALYST"]);
+  if (!auth.authorized) return auth.response;
+
+  const workspaceId = auth.workspaceId!;
+
+  try {
+    const body = await req.json();
+    const { title, message, severity, type, metric } = body;
+
+    if (!title || !message) {
+      return NextResponse.json({ error: "Title and message are required" }, { status: 400 });
+    }
+
+    const alert = await db.alert.create({
+      data: {
+        title: title.trim(),
+        message: message.trim(),
+        severity: severity || "HIGH",
+        type: type || "ANOMALY",
+        metric: metric || null,
+        status: "ACTIVE",
+        workspaceId,
+      },
+    });
+
+    return NextResponse.json({ success: true, alert }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to create alert" }, { status: 500 });
+  }
+}

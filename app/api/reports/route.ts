@@ -210,3 +210,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  const auth = await requireAuth(["ADMIN"]);
+  if (!auth.authorized) return auth.response;
+
+  const workspaceId = auth.workspaceId!;
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Report ID is required" }, { status: 400 });
+    }
+
+    const existing = await db.report.findFirst({
+      where: { id, workspaceId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Report not found or unauthorized" }, { status: 404 });
+    }
+
+    await db.report.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: "Report deleted successfully" });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to delete report" }, { status: 500 });
+  }
+}

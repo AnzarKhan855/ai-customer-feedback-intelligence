@@ -81,7 +81,12 @@ export async function GET(req: Request) {
         negRatio: Number((negRatio * 100).toFixed(0)),
         riskScore,
         riskTier,
-        isEnterprise: acc.account.toLowerCase().includes("enterprise") || acc.account.toLowerCase().includes("globex") || acc.account.toLowerCase().includes("omnicorp"),
+        isEnterprise:
+          acc.account.toLowerCase().includes("enterprise") ||
+          acc.account.toLowerCase().includes("tier 1") ||
+          acc.account.toLowerCase().includes("vip") ||
+          acc.account.toLowerCase().includes("corp") ||
+          acc.account.toLowerCase().includes("inc"),
       };
     });
 
