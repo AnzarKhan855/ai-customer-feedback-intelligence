@@ -20,6 +20,7 @@ import {
   Activity,
 } from "lucide-react";
 import { getSentimentBadgeColor, getChannelBadge, formatTimeAgo } from "@/lib/utils";
+import { EmergingTrendsRadar } from "@/components/trends/EmergingTrendsRadar";
 
 export default function TrendsPage() {
   const [themes, setThemes] = useState<any[]>([]);
@@ -134,6 +135,9 @@ export default function TrendsPage() {
             Create Custom Theme
           </button>
         </div>
+
+        {/* Statistical Emerging Trends Radar */}
+        <EmergingTrendsRadar />
 
         {/* Anomaly Detection Banner if anomalies exist */}
         {anomalies.length > 0 && (
