@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck, Lint, Test & Build
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "file:./dev.db"
+      NEXTAUTH_SECRET: "ci-validation-secret-key-32-chars-min"
+      NEXTAUTH_URL: "http://localhost:3000"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Validate Prisma Schemas
+        run: |
+          npx prisma validate --schema=prisma/schema.prisma
+          npx prisma validate --schema=prisma/schema.postgresql.prisma
+
+      - name: TypeScript Static Typecheck
+        run: npx tsc --noEmit
+
+      - name: ESLint Code Quality Inspection
+        run: npm run lint
+
+      - name: Run Automated Test Suite
+        run: npm test
+
+      - name: Next.js Production Build
+        run: npm run build
