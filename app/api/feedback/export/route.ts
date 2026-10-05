@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
   try {
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
     const sentiment = searchParams.get("sentiment") || "";
     const channel = searchParams.get("channel") || "";
     const status = searchParams.get("status") || "";
+    const format = searchParams.get("format") || "csv";
 
     const where: any = {
       workspaceId: session.user.workspaceId,
@@ -35,8 +37,27 @@ export async function GET(req: Request) {
     const items = await prisma.feedback.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 1000,
+      take: 2000,
     });
+
+    await recordAuditLog({
+      workspaceId: session.user.workspaceId,
+      actorEmail: session.user.email || "unknown",
+      actorRole: session.user.role || "MEMBER",
+      action: "EXPORT_DATA",
+      entity: "Feedback",
+      metadata: { count: items.length, format, filters: { search, sentiment, channel, status } },
+    });
+
+    if (format === "json") {
+      return new NextResponse(JSON.stringify({ items, totalCount: items.length }, null, 2), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="loop_feedback_export_${Date.now()}.json"`,
+        },
+      });
+    }
 
     // Build CSV Content
     const headers = [
