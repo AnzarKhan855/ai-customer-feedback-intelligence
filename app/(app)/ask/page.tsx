@@ -17,6 +17,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { getSentimentBadgeColor, getChannelBadge, formatTimeAgo } from "@/lib/utils";
+import { RootCauseExplorer } from "@/components/ai/RootCauseExplorer";
 
 const SAMPLE_QUESTIONS = [
   "What are the biggest customer complaints and friction points?",
@@ -58,6 +59,7 @@ I am grounded directly in your tenant's active feedback database. You can ask me
   const [filterSentiment, setFilterSentiment] = useState("");
   const [filterChannel, setFilterChannel] = useState("");
   const [minSeverity, setMinSeverity] = useState(0);
+  const [activeTab, setActiveTab] = useState<"qa" | "rootcause">("qa");
 
   const handleAsk = async (queryToAsk = question) => {
     if (!queryToAsk.trim() || loading) return;
@@ -127,8 +129,36 @@ I am grounded directly in your tenant's active feedback database. You can ask me
           </div>
         </div>
 
-        {/* Suggested Queries Chips */}
-        <div className="space-y-1.5">
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
+          <button
+            onClick={() => setActiveTab("qa")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition ${
+              activeTab === "qa"
+                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            Grounded Q&A Analyst
+          </button>
+          <button
+            onClick={() => setActiveTab("rootcause")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition ${
+              activeTab === "rootcause"
+                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            Issue Root-Cause Explorer
+          </button>
+        </div>
+
+        {activeTab === "rootcause" ? (
+          <RootCauseExplorer />
+        ) : (
+          <>
+            {/* Suggested Queries Chips */}
+            <div className="space-y-1.5">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
             <HelpCircle className="w-3.5 h-3.5" /> Suggested Inquiries
           </div>
@@ -362,6 +392,8 @@ I am grounded directly in your tenant's active feedback database. You can ask me
             </form>
           </div>
         </div>
+        </>
+        )}
       </div>
     </AppShell>
   );

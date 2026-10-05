@@ -221,5 +221,6 @@ export async function searchSimilarFeedback(
     customerLabel: item.feedback.customerLabel || undefined,
     score: Math.round(item.score * 100) / 100,
     themes: item.feedback.themes.map((t) => t.theme.name),
+    createdAt: item.feedback.createdAt,
   }));
 }
