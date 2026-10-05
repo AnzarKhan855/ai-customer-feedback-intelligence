@@ -14,6 +14,7 @@ import {
   Database,
   Bell,
   Target,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ const INTELLIGENCE_NAV_ITEMS = [
 
 const SETTINGS_NAV_ITEMS = [
   { href: "/settings", label: "Workspace & Team", icon: Settings },
+  { href: "/admin", label: "Admin Control", icon: Shield },
 ];
 
 export default function Sidebar() {
