@@ -43,9 +43,25 @@ class CookieJar {
   }
 }
 
+async function safeFetch(url: string, options: RequestInit = {}, retries = 2): Promise<Response> {
+  let lastError: any;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function performLogin(email: string, pass: string): Promise<{ status: number; jar: CookieJar }> {
   const jar = new CookieJar();
-  const csrfRes = await fetch(`${BASE_URL}/api/auth/csrf`);
+  const csrfRes = await safeFetch(`${BASE_URL}/api/auth/csrf`);
   const csrfData = await csrfRes.json();
   jar.absorb(csrfRes);
 
@@ -55,7 +71,7 @@ async function performLogin(email: string, pass: string): Promise<{ status: numb
   params.append("password", pass);
   params.append("json", "true");
 
-  const loginRes = await fetch(`${BASE_URL}/api/auth/callback/credentials`, {
+  const loginRes = await safeFetch(`${BASE_URL}/api/auth/callback/credentials`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -114,35 +130,46 @@ async function runFullUserJourney() {
   let viewerJar = new CookieJar();
 
   try {
-    // Admin login
     const adminLogin = await performLogin("admin@loop.dev", "password123");
     adminJar = adminLogin.jar;
     record("2.1 Admin Login (admin@loop.dev)", (adminLogin.status === 200 || adminLogin.status === 302) && adminJar.hasSession(), `HTTP ${adminLogin.status}, SessionTokenActive=${adminJar.hasSession()}`);
+  } catch (err: any) {
+    record("2.1 Admin Login (admin@loop.dev)", false, err.message);
+  }
 
-    // Analyst login
+  try {
     const analystLogin = await performLogin("analyst@loop.dev", "password123");
     analystJar = analystLogin.jar;
     record("2.2 Analyst Login (analyst@loop.dev)", (analystLogin.status === 200 || analystLogin.status === 302) && analystJar.hasSession(), `HTTP ${analystLogin.status}, SessionTokenActive=${analystJar.hasSession()}`);
+  } catch (err: any) {
+    record("2.2 Analyst Login (analyst@loop.dev)", false, err.message);
+  }
 
-    // Viewer login
+  try {
     const viewerLogin = await performLogin("viewer@loop.dev", "password123");
     viewerJar = viewerLogin.jar;
     record("2.3 Viewer Login (viewer@loop.dev)", (viewerLogin.status === 200 || viewerLogin.status === 302) && viewerJar.hasSession(), `HTTP ${viewerLogin.status}, SessionTokenActive=${viewerJar.hasSession()}`);
+  } catch (err: any) {
+    record("2.3 Viewer Login (viewer@loop.dev)", false, err.message);
+  }
 
-    // Bad password
+  try {
     const badPass = await performLogin("admin@loop.dev", "wrong-password");
     record("2.4 Invalid Password Rejection", badPass.status === 401 || !badPass.jar.hasSession(), `HTTP ${badPass.status}, RejectedProperly=${!badPass.jar.hasSession()}`);
+  } catch (err: any) {
+    record("2.4 Invalid Password Rejection", false, err.message);
+  }
 
-    // Nonexistent user
+  try {
     const noUser = await performLogin("nonexistent_user_999@loop.dev", "password123");
     record("2.5 Nonexistent User Rejection", noUser.status === 401 || !noUser.jar.hasSession(), `HTTP ${noUser.status}, RejectedProperly=${!noUser.jar.hasSession()}`);
   } catch (err: any) {
-    record("2.0 Authentication Suite", false, err.message);
+    record("2.5 Nonexistent User Rejection", false, err.message);
   }
 
   // Helper for admin fetch
   const adminFetch = (path: string, options: RequestInit = {}) => {
-    return fetch(`${BASE_URL}${path}`, {
+    return safeFetch(`${BASE_URL}${path}`, {
       ...options,
       headers: {
         ...options.headers,
@@ -456,6 +483,59 @@ async function runFullUserJourney() {
     record("9.1 Unauthenticated API Request Rejection", unauthStats.status === 401, `HTTP ${unauthStats.status} (Expected 401 Unauthorized)`);
   } catch (err: any) {
     record("9.0 Logout & Protection", false, err.message);
+  }
+
+  // SECTION 10: ENTERPRISE AUDIT, SEARCH, TRIAGE & EXPORT CAPABILITIES
+  try {
+    // 10.1 Audit Log API query as Admin
+    const auditRes = await adminFetch("/api/audit-logs?limit=5");
+    const auditData = await auditRes.json();
+    const logsList = auditData.auditLogs || auditData.logs || [];
+    const auditPass = auditRes.status === 200 && Array.isArray(logsList) && logsList.length > 0;
+    record("10.1 Enterprise Audit Log Query (GET /api/audit-logs)", auditPass, `HTTP ${auditRes.status}, ReturnedLogs=${logsList.length}, TotalAuditEntries=${auditData.pagination?.totalCount || 0}`);
+
+    // 10.2 Audit Log RBAC Guard (Viewer blocked from audit logs)
+    const viewerAuditRes = await safeFetch(`${BASE_URL}/api/audit-logs`, {
+      headers: { Cookie: viewerJar.toHeader() },
+    });
+    record("10.2 Audit Log RBAC Guard (Viewer 403 Forbidden)", viewerAuditRes.status === 403, `HTTP ${viewerAuditRes.status} (Expected 403)`);
+
+    // 10.3 Single Feedback Status Triage PATCH
+    if (createdFeedbackId) {
+      const triageRes = await adminFetch("/api/feedback", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: createdFeedbackId, status: "ACTIONED" }),
+      });
+      const triageData = await triageRes.json();
+      const triagePass = triageRes.status === 200 && (triageData.status === "ACTIONED" || triageData.feedback?.status === "ACTIONED");
+      record("10.3 Feedback Status Triage PATCH", triagePass, `HTTP ${triageRes.status}, UpdatedStatus=${triageData.status || triageData.feedback?.status}`);
+    }
+
+    // 10.4 Multi-Entity Global Search
+    const searchRes = await adminFetch("/api/search?q=billing");
+    const searchData = await searchRes.json();
+    const searchPass = searchRes.status === 200 && typeof searchData.totalMatches === "number";
+    record("10.4 Multi-Entity Global Search (GET /api/search)", searchPass, `HTTP ${searchRes.status}, TotalMatches=${searchData.totalMatches}`);
+
+    // 10.5 JSON Data Export
+    const exportJsonRes = await adminFetch("/api/feedback/export?format=json");
+    const exportJsonPass = exportJsonRes.status === 200 && exportJsonRes.headers.get("content-type")?.includes("application/json");
+    record("10.5 JSON Feedback Export (GET /api/feedback/export?format=json)", exportJsonPass, `HTTP ${exportJsonRes.status}`);
+
+    // 10.6 CSV Data Export
+    const exportCsvRes = await adminFetch("/api/feedback/export?format=csv");
+    const exportCsvPass = exportCsvRes.status === 200 && exportCsvRes.headers.get("content-type")?.includes("text/csv");
+    record("10.6 CSV Feedback Export (GET /api/feedback/export?format=csv)", exportCsvPass, `HTTP ${exportCsvRes.status}`);
+
+    // 10.7 VoC Intelligence & Prior-Period Deltas
+    const vocStatsRes = await adminFetch("/api/dashboard/stats");
+    const vocStatsData = await vocStatsRes.json();
+    const hasVoC = Boolean(vocStatsData.vocBreakdown?.topCustomerProblems && vocStatsData.vocBreakdown?.topCustomerDesires);
+    const hasTrends = typeof vocStatsData.metrics?.feedbackGrowthPct === "number" && typeof vocStatsData.metrics?.sentimentDeltaPct === "number";
+    record("10.7 VoC Radar & KPI Growth Deltas", vocStatsRes.status === 200 && hasVoC && hasTrends, `HTTP ${vocStatsRes.status}, VoCReady=${hasVoC}, TrendsReady=${hasTrends}, GrowthDelta=${vocStatsData.metrics?.feedbackGrowthPct}%`);
+  } catch (err: any) {
+    record("10.0 Enterprise Features", false, err.message);
   }
 
   console.log("\n======================================================================");
