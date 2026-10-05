@@ -520,12 +520,12 @@ async function runFullUserJourney() {
 
     // 10.5 JSON Data Export
     const exportJsonRes = await adminFetch("/api/feedback/export?format=json");
-    const exportJsonPass = exportJsonRes.status === 200 && exportJsonRes.headers.get("content-type")?.includes("application/json");
+    const exportJsonPass = exportJsonRes.status === 200 && Boolean(exportJsonRes.headers.get("content-type")?.includes("application/json"));
     record("10.5 JSON Feedback Export (GET /api/feedback/export?format=json)", exportJsonPass, `HTTP ${exportJsonRes.status}`);
 
     // 10.6 CSV Data Export
     const exportCsvRes = await adminFetch("/api/feedback/export?format=csv");
-    const exportCsvPass = exportCsvRes.status === 200 && exportCsvRes.headers.get("content-type")?.includes("text/csv");
+    const exportCsvPass = exportCsvRes.status === 200 && Boolean(exportCsvRes.headers.get("content-type")?.includes("text/csv"));
     record("10.6 CSV Feedback Export (GET /api/feedback/export?format=csv)", exportCsvPass, `HTTP ${exportCsvRes.status}`);
 
     // 10.7 VoC Intelligence & Prior-Period Deltas
