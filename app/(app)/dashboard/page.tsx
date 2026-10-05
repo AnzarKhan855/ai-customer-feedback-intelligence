@@ -10,6 +10,7 @@ import AIExecutiveInsights from "@/components/dashboard/AIExecutiveInsights";
 import EmotionBreakdown from "@/components/dashboard/EmotionBreakdown";
 import SeverityBreakdown from "@/components/dashboard/SeverityBreakdown";
 import VoCSummary from "@/components/dashboard/VoCSummary";
+import { CustomerHealthCard } from "@/components/health/CustomerHealthCard";
 import {
   AreaChart,
   Area,
@@ -238,6 +239,9 @@ export default function DashboardPage() {
 
             {/* Voice-of-Customer Intelligence Radar */}
             <VoCSummary data={data?.vocBreakdown} />
+
+            {/* Customer Health Intelligence */}
+            <CustomerHealthCard />
 
             {/* Visualizations Grid 1: Volume Over Time & Sentiment Donut */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
