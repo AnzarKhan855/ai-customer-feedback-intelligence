@@ -4,6 +4,13 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_SECRET) {
+  throw new Error(
+    "FATAL CONFIGURATION: NEXTAUTH_SECRET environment variable is missing in production. " +
+    "A cryptographically secure secret (minimum 32 characters) is required."
+  );
+}
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",

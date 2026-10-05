@@ -119,3 +119,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create theme" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  const auth = await requireAuth(["ADMIN"]);
+  if (!auth.authorized) return auth.response;
+
+  const workspaceId = auth.workspaceId!;
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Theme ID is required" }, { status: 400 });
+    }
+
+    const existing = await db.theme.findFirst({
+      where: { id, workspaceId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Theme not found or unauthorized" }, { status: 404 });
+    }
+
+    await db.feedbackTheme.deleteMany({
+      where: { themeId: id },
+    });
+
+    await db.theme.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: "Theme successfully deleted" });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to delete theme" }, { status: 500 });
+  }
+}

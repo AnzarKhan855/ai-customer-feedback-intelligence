@@ -82,6 +82,13 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Item ID is required" }, { status: 400 });
     }
 
+    const existing = await prisma.roadmapItem.findFirst({
+      where: { id, workspaceId: session.user.workspaceId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Roadmap item not found or unauthorized" }, { status: 404 });
+    }
+
     const updated = await prisma.roadmapItem.update({
       where: { id },
       data: {
@@ -99,5 +106,35 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ item: updated });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to update roadmap item" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.workspaceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ error: "Item ID is required" }, { status: 400 });
+    }
+
+    const existing = await prisma.roadmapItem.findFirst({
+      where: { id, workspaceId: session.user.workspaceId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Roadmap item not found or unauthorized" }, { status: 404 });
+    }
+
+    await prisma.roadmapItem.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: "Roadmap item deleted" });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to delete roadmap item" }, { status: 500 });
   }
 }

@@ -74,8 +74,8 @@ export async function POST(req: Request) {
 
     // Automatically transition feedback status to ACTIONED if feedbackId provided
     if (parsed.data.feedbackId) {
-      await prisma.feedback.update({
-        where: { id: parsed.data.feedbackId },
+      await prisma.feedback.updateMany({
+        where: { id: parsed.data.feedbackId, workspaceId: session.user.workspaceId },
         data: { status: "ACTIONED" },
       });
     }
@@ -83,5 +83,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ action: newAction }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to create action ticket" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.workspaceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { id, status, priority, title, description } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Action item ID required" }, { status: 400 });
+    }
+
+    const existing = await prisma.actionItem.findFirst({
+      where: { id, workspaceId: session.user.workspaceId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Action item not found or unauthorized" }, { status: 404 });
+    }
+
+    const updated = await prisma.actionItem.update({
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(priority && { priority }),
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+      },
+    });
+
+    return NextResponse.json({ action: updated });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to update action item" }, { status: 500 });
   }
 }

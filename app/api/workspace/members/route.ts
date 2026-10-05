@@ -110,3 +110,35 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Failed to update member role" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  const auth = await requireAuth(["ADMIN"]);
+  if (!auth.authorized) return auth.response;
+
+  const workspaceId = auth.workspaceId!;
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    if (userId === auth.user.id) {
+      return NextResponse.json({ error: "You cannot remove yourself from the workspace" }, { status: 400 });
+    }
+
+    const user = await db.user.findFirst({ where: { id: userId, workspaceId } });
+    if (!user) {
+      return NextResponse.json({ error: "Member not found in this workspace" }, { status: 404 });
+    }
+
+    await db.user.delete({
+      where: { id: userId },
+    });
+
+    return NextResponse.json({ success: true, message: "Member successfully removed from workspace" });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to remove member" }, { status: 500 });
+  }
+}
