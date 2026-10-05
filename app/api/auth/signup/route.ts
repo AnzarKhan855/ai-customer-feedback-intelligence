@@ -3,9 +3,26 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { SignupSchema } from "@/lib/types";
 import { recordAuditLog } from "@/lib/audit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const rateLimit = checkRateLimit(`signup:${ip}`, { windowMs: 60 * 1000, maxRequests: 10 });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again in 1 minute." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": `${Math.ceil(rateLimit.resetMs / 1000)}`,
+            "X-RateLimit-Limit": `${rateLimit.limit}`,
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+
     const body = await req.json();
     const result = SignupSchema.safeParse(body);
 

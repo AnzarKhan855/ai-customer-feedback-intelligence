@@ -4,12 +4,28 @@ import { AskQuestionSchema } from "@/lib/types";
 import { searchSimilarFeedback } from "@/lib/search";
 import { answerGroundedQuestion } from "@/lib/ai";
 import { db } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (!auth.authorized) return auth.response;
 
   const workspaceId = auth.workspaceId!;
+
+  const rateLimit = checkRateLimit(`ask:${workspaceId}`, { windowMs: 60 * 1000, maxRequests: 30 });
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Maximum 30 AI Analyst queries per minute." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": `${Math.ceil(rateLimit.resetMs / 1000)}`,
+          "X-RateLimit-Limit": `${rateLimit.limit}`,
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
 
   try {
     const body = await req.json();
