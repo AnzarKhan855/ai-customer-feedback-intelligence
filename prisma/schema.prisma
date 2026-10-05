@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  users           User[]
+  feedback        Feedback[]
+  datasets        Dataset[]
+  themes          Theme[]
+  reports         Report[]
+  alerts          Alert[]
+  recommendations AIRecommendation[]
+  actionItems     ActionItem[]
+  roadmapItems    RoadmapItem[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("ANALYST") // "ADMIN" | "ANALYST" | "VIEWER"
+  workspaceId  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reports      Report[]
+  actionItems  ActionItem[]
+
+  @@index([workspaceId])
+}
+
+model Dataset {
+  id             String     @id @default(cuid())
+  name           String
+  fileName       String
+  fileType       String     // "CSV" | "JSON" | "TXT"
+  recordCount    Int        @default(0)
+  validCount     Int        @default(0)
+  errorCount     Int        @default(0)
+  qualityScore   Float      @default(100.0) // 0 to 100
+  status         String     @default("READY") // "PROCESSING" | "READY" | "FAILED"
+  qualityMetrics String?    // JSON summary of completeness, duplicates, validity
+  schemaMapping  String?    // JSON column mappings
+  workspaceId    String
+  createdById    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  workspace      Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  feedback       Feedback[]
+
+  @@index([workspaceId])
+}
+
+model Feedback {
+  id                 String          @id @default(cuid())
+  content            String
+  channel            String          // "SUPPORT_TICKET" | "APP_STORE" | "NPS_SURVEY" | "SALES_CALL" | "COMMUNITY"
+  sourceRef          String?         // External ticket ID, URL, or identifier
+  customerLabel      String?         // Customer tier/name (e.g., "Enterprise - Acme", "Free User")
+  sentiment          String          @default("NEU") // "POS" | "NEU" | "NEG"
+  sentimentScore     Float           @default(0.0)   // -1.0 to 1.0
+  aiConfidence       Float           @default(0.85)  // 0.0 to 1.0 confidence score
+  featureArea        String?         // Short label extracted by AI (e.g., "Billing", "Onboarding")
+  emotion            String?         // "anger" | "frustration" | "disappointment" | "satisfaction" | "happiness" | "confusion" | "excitement" | "concern"
+  emotionConfidence  Float?          // 0.0 to 1.0
+  intent             String?         // "complaint" | "praise" | "suggestion" | "question" | "refund_request" | "feature_request" | "cancellation" | "technical_issue"
+  aspectsJson        String?         // JSON array of [{ aspect: "Delivery", sentiment: "NEG", score: -0.85 }]
+  severityScore      Int             @default(20)    // 0 to 100 explainable score
+  priority           String          @default("LOW") // "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+  severityRationale  String?         // Explainable justification for severity
+  churnRiskSignal    Boolean         @default(false) // Whether churn signals were identified
+  churnRiskRationale String?         // AI reasoning for churn risk inference
+  rootCauseHypothesis String?        // Identified root cause hypothesis
+  detectedEntities   String?         // JSON array of extracted entities / keywords
+  product            String?         // Product line / module
+  region             String?         // Geographic or cloud region (e.g. "US-East", "EU-West", "APAC")
+  rationale          String?         // AI reasoning summary
+  status             String          @default("NEW") // "NEW" | "REVIEWED" | "ACTIONED"
+  datasetId          String?
+  workspaceId        String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  dataset            Dataset?        @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+  themes             FeedbackTheme[]
+  embedding          Embedding?
+  actionItems        ActionItem[]
+
+  @@index([workspaceId])
+  @@index([sentiment])
+  @@index([emotion])
+  @@index([intent])
+  @@index([priority])
+  @@index([status])
+  @@index([channel])
+  @@index([createdAt])
+  @@index([datasetId])
+}
+
+model Theme {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  color       String          @default("#6366f1")
+  workspaceId String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  feedback     FeedbackTheme[]
+  roadmapItems RoadmapItem[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model FeedbackTheme {
+  feedbackId String
+  themeId    String
+  confidence Float    @default(1.0) // 0.0 to 1.0
+
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  theme      Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  @@id([feedbackId, themeId])
+  @@index([feedbackId])
+  @@index([themeId])
+}
+
+model Embedding {
+  id         String   @id @default(cuid())
+  feedbackId String   @unique
+  vector     String   // Serialized JSON array of numbers representing vector embeddings
+  createdAt  DateTime @default(now())
+
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id            String    @id @default(cuid())
+  title         String
+  periodStart   DateTime
+  periodEnd     DateTime
+  contentJson   String    // Structured JSON narrative (Executive summary, top themes, quotes, recommendations)
+  generatedById String
+  workspaceId   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  generatedBy   User      @relation(fields: [generatedById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([generatedById])
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  title       String
+  message     String
+  severity    String    @default("HIGH") // "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+  type        String    // "SENTIMENT_DROP" | "COMPLAINT_SPIKE" | "NEW_TOPIC" | "CHURN_RISK" | "ANOMALY"
+  metric      String?   // Related metric details
+  status      String    @default("ACTIVE") // "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED"
+  workspaceId String
+  createdAt   DateTime  @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model AIRecommendation {
+  id                String    @id @default(cuid())
+  problem           String
+  evidence          String
+  businessImpact    String
+  recommendedAction String
+  priority          String    @default("HIGH") // "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+  expectedOutcome   String
+  status            String    @default("OPEN") // "OPEN" | "IN_PROGRESS" | "RESOLVED"
+  workspaceId       String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model ActionItem {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  integration  String    @default("LINEAR") // "LINEAR" | "JIRA" | "GITHUB"
+  externalKey  String    // e.g. "LOO-142" or "ENG-809"
+  status       String    @default("TODO")   // "TODO" | "IN_PROGRESS" | "DONE"
+  priority     String    @default("HIGH")   // "URGENT" | "HIGH" | "MEDIUM" | "LOW"
+  feedbackId   String?
+  createdById  String?
+  workspaceId  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  feedback     Feedback? @relation(fields: [feedbackId], references: [id], onDelete: SetNull)
+  createdBy    User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([feedbackId])
+}
+
+model RoadmapItem {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  stage         String    @default("CONSIDERATION") // "CONSIDERATION" | "IN_PROGRESS" | "COMPLETED"
+  impactScore   Float     @default(85.0)
+  targetRelease String?   // e.g., "v2.4", "Q4 2026"
+  themeId       String?
+  workspaceId   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  theme         Theme?    @relation(fields: [themeId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([themeId])
+}
