@@ -538,6 +538,91 @@ async function runFullUserJourney() {
     record("10.0 Enterprise Features", false, err.message);
   }
 
+  // SECTION 11: 15 ENTERPRISE EXPANSION FEATURES VERIFICATION
+  try {
+    // 11.1 Customer Health Intelligence
+    const healthRes = await adminFetch("/api/health-score");
+    const healthData = await healthRes.json();
+    const healthPass = healthRes.status === 200 && typeof healthData.healthScore === "number";
+    record("11.1 Customer Health Intelligence (GET /api/health-score)", healthPass, `HTTP ${healthRes.status}, HealthScore=${healthData.healthScore}/100, Tier=${healthData.accountTier}`);
+
+    // 11.2 Grounded Root Cause Explorer
+    const rootCauseRes = await adminFetch("/api/insights/root-cause?topic=billing");
+    const rootCauseData = await rootCauseRes.json();
+    const rootCausePass = rootCauseRes.status === 200 && Array.isArray(rootCauseData.rootCauses);
+    record("11.2 Grounded Root Cause Explorer (GET /api/insights/root-cause)", rootCausePass, `HTTP ${rootCauseRes.status}, HypothesesFound=${rootCauseData.rootCauses?.length || 0}`);
+
+    // 11.3 Emerging Issue Trend Detection
+    const trendsRes = await adminFetch("/api/analytics/trends/emerging");
+    const trendsData = await trendsRes.json();
+    const trendsPass = trendsRes.status === 200 && Array.isArray(trendsData.emergingTrends);
+    record("11.3 Emerging Trend Detection (GET /api/analytics/trends/emerging)", trendsPass, `HTTP ${trendsRes.status}, EmergingTrendsCount=${trendsData.emergingTrends?.length || 0}`);
+
+    // 11.4 Product Gap & Competitive Mining
+    const gapsRes = await adminFetch("/api/product/gaps");
+    const gapsData = await gapsRes.json();
+    const gapsPass = gapsRes.status === 200 && typeof gapsData.metrics?.totalProductGaps === "number";
+    record("11.4 Product Gap & Competitive Mining (GET /api/product/gaps)", gapsPass, `HTTP ${gapsRes.status}, Gaps=${gapsData.metrics?.totalProductGaps}, CompetitorMentions=${gapsData.metrics?.totalCompetitorMentions}`);
+
+    // 11.5 AI Strategic Priority Matrix
+    const prioRes = await adminFetch("/api/strategy/priority-matrix");
+    const prioData = await prioRes.json();
+    const prioPass = prioRes.status === 200 && Boolean(prioData.matrix?.highPriority);
+    record("11.5 AI Strategic Priority Matrix (GET /api/strategy/priority-matrix)", prioPass, `HTTP ${prioRes.status}, HighPriorityCount=${prioData.matrix?.highPriority?.length || 0}`);
+
+    // 11.6 Semantic Feedback Clusters
+    const clusterRes = await adminFetch("/api/feedback/clusters");
+    const clusterData = await clusterRes.json();
+    const clusterPass = clusterRes.status === 200 && Array.isArray(clusterData.clusters);
+    record("11.6 Semantic Feedback Clusters (GET /api/feedback/clusters)", clusterPass, `HTTP ${clusterRes.status}, DiscoveredClusters=${clusterData.clusters?.length || 0}`);
+
+    // 11.7 Executive Intelligence Briefing
+    const briefRes = await adminFetch("/api/insights/executive-briefing");
+    const briefData = await briefRes.json();
+    const briefPass = briefRes.status === 200 && typeof briefData.headline === "string";
+    record("11.7 Executive Intelligence Briefing (GET /api/insights/executive-briefing)", briefPass, `HTTP ${briefRes.status}, Headline="${briefData.headline?.slice(0, 40)}..."`);
+
+    // 11.8 Feedback Deduplication & Merging
+    const dupRes = await adminFetch("/api/feedback/duplicates");
+    const dupData = await dupRes.json();
+    const dupPass = dupRes.status === 200 && typeof dupData.totalDuplicatesDetected === "number";
+    record("11.8 Feedback Deduplication (GET /api/feedback/duplicates)", dupPass, `HTTP ${dupRes.status}, DuplicatesFound=${dupData.totalDuplicatesDetected}`);
+
+    // 11.9 Enterprise Activity Center
+    const notifRes = await adminFetch("/api/notifications");
+    const notifData = await notifRes.json();
+    const notifPass = notifRes.status === 200 && Array.isArray(notifData.items);
+    record("11.9 Enterprise Activity Center (GET /api/notifications)", notifPass, `HTTP ${notifRes.status}, ActivityItems=${notifData.items?.length || 0}`);
+
+    // 11.10 Ingestion Operations Diagnostics
+    const diagRes = await adminFetch("/api/datasets/diagnostics");
+    const diagData = await diagRes.json();
+    const diagPass = diagRes.status === 200 && typeof diagData.averageQualityScore === "number";
+    record("11.10 Ingestion Operations Diagnostics (GET /api/datasets/diagnostics)", diagPass, `HTTP ${diagRes.status}, HygieneScore=${diagData.averageQualityScore}/100`);
+
+    // 11.11 Admin Control Diagnostics (Admin)
+    const adminDiagRes = await adminFetch("/api/admin/diagnostics");
+    const adminDiagData = await adminDiagRes.json();
+    const adminDiagPass = adminDiagRes.status === 200 && adminDiagData.systemHealth === "HEALTHY";
+    record("11.11 Admin Control Diagnostics (GET /api/admin/diagnostics)", adminDiagPass, `HTTP ${adminDiagRes.status}, SystemHealth=${adminDiagData.systemHealth}, Latency=${adminDiagData.databaseLatencyMs}ms`);
+
+    // 11.12 Admin Control RBAC Guard (Viewer 403 Forbidden)
+    const viewerAdminDiagRes = await safeFetch(`${BASE_URL}/api/admin/diagnostics`, {
+      headers: { Cookie: viewerJar.toHeader() },
+    });
+    record("11.12 Admin RBAC Guard (Viewer 403 Forbidden on /api/admin/diagnostics)", viewerAdminDiagRes.status === 403, `HTTP ${viewerAdminDiagRes.status} (Expected 403)`);
+
+    // 11.13 PM Decision Hub Page Route
+    const pmPageRes = await adminFetch("/pm");
+    record("11.13 PM Decision Hub Route (GET /pm)", pmPageRes.status === 200, `HTTP ${pmPageRes.status}`);
+
+    // 11.14 Admin Control Page Route
+    const adminPageRes = await adminFetch("/admin");
+    record("11.14 Admin Control Route (GET /admin)", adminPageRes.status === 200, `HTTP ${adminPageRes.status}`);
+  } catch (err: any) {
+    record("11.0 Enterprise Expansion Verification", false, err.message);
+  }
+
   console.log("\n======================================================================");
   const total = results.length;
   const passed = results.filter((r) => r.status === "PASS").length;
