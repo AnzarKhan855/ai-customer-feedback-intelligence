@@ -55,6 +55,9 @@ I am grounded directly in your tenant's active feedback database. You can ask me
     },
   ]);
   const [loading, setLoading] = useState(false);
+  const [filterSentiment, setFilterSentiment] = useState("");
+  const [filterChannel, setFilterChannel] = useState("");
+  const [minSeverity, setMinSeverity] = useState(0);
 
   const handleAsk = async (queryToAsk = question) => {
     if (!queryToAsk.trim() || loading) return;
@@ -66,10 +69,15 @@ I am grounded directly in your tenant's active feedback database. You can ask me
     setLoading(true);
 
     try {
+      const payload: any = { question: queryToAsk.trim(), limit: 6 };
+      if (filterSentiment) payload.filterSentiment = filterSentiment;
+      if (filterChannel) payload.filterChannel = filterChannel;
+      if (minSeverity > 0) payload.minSeverity = minSeverity;
+
       const res = await fetch("/api/insights/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: queryToAsk.trim(), limit: 6 }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -275,8 +283,60 @@ I am grounded directly in your tenant's active feedback database. You can ask me
             )}
           </div>
 
-          {/* Input Box */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
+          {/* Input Box & Filter Toolbar */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 space-y-3">
+            {/* Grounding Filters Toolbar */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-[11px] font-semibold text-slate-400">RAG Grounding Filters:</span>
+              <select
+                value={filterChannel}
+                onChange={(e) => setFilterChannel(e.target.value)}
+                className="px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                <option value="">All Channels</option>
+                <option value="SUPPORT_TICKET">Support Tickets</option>
+                <option value="APP_STORE">App Store</option>
+                <option value="NPS_SURVEY">NPS Surveys</option>
+                <option value="SALES_CALL">Sales Calls</option>
+                <option value="COMMUNITY">Community</option>
+              </select>
+
+              <select
+                value={filterSentiment}
+                onChange={(e) => setFilterSentiment(e.target.value)}
+                className="px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                <option value="">All Sentiments</option>
+                <option value="POS">Positive Only</option>
+                <option value="NEU">Neutral Only</option>
+                <option value="NEG">Negative Only</option>
+              </select>
+
+              <select
+                value={minSeverity}
+                onChange={(e) => setMinSeverity(parseInt(e.target.value) || 0)}
+                className="px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                <option value={0}>All Severities (0-100)</option>
+                <option value={50}>High Severity (50+)</option>
+                <option value={75}>Critical Severity (75+)</option>
+              </select>
+
+              {(filterChannel || filterSentiment || minSeverity > 0) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterChannel("");
+                    setFilterSentiment("");
+                    setMinSeverity(0);
+                  }}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 underline ml-auto"
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();

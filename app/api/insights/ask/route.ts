@@ -22,10 +22,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { question, limit, filterSentiment, filterTheme } = result.data;
+    const { question, limit, filterSentiment, filterTheme, filterChannel, minSeverity } = result.data;
 
     // 1. Semantic retrieval of top-K relevant feedback items strictly for this workspace
-    let relevantFeedback = await searchSimilarFeedback(workspaceId, question, limit || 8);
+    const candidateLimit = Math.max(12, (limit || 8) * 3);
+    let relevantFeedback = await searchSimilarFeedback(workspaceId, question, candidateLimit);
 
     if (filterSentiment) {
       relevantFeedback = relevantFeedback.filter((f) => f.sentiment === filterSentiment);
@@ -33,6 +34,14 @@ export async function POST(req: Request) {
     if (filterTheme) {
       relevantFeedback = relevantFeedback.filter((f) => f.themes.includes(filterTheme));
     }
+    if (filterChannel) {
+      relevantFeedback = relevantFeedback.filter((f) => f.channel === filterChannel);
+    }
+    if (minSeverity !== undefined) {
+      relevantFeedback = relevantFeedback.filter((f) => (f.severityScore ?? 0) >= minSeverity);
+    }
+
+    relevantFeedback = relevantFeedback.slice(0, limit || 8);
 
 
 

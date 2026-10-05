@@ -151,6 +151,8 @@ export const AskQuestionSchema = z.object({
   limit: z.number().optional().default(6),
   filterSentiment: z.enum(["POS", "NEU", "NEG"]).optional(),
   filterTheme: z.string().optional(),
+  filterChannel: z.enum(["SUPPORT_TICKET", "APP_STORE", "NPS_SURVEY", "SALES_CALL", "COMMUNITY"]).optional(),
+  minSeverity: z.number().min(0).max(100).optional(),
 });
 
 // Report Generation Schema

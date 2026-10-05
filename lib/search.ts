@@ -216,6 +216,8 @@ export async function searchSimilarFeedback(
     channel: item.feedback.channel,
     sentiment: item.feedback.sentiment,
     sentimentScore: item.feedback.sentimentScore,
+    severityScore: item.feedback.severityScore,
+    priority: item.feedback.priority,
     customerLabel: item.feedback.customerLabel || undefined,
     score: Math.round(item.score * 100) / 100,
     themes: item.feedback.themes.map((t) => t.theme.name),
