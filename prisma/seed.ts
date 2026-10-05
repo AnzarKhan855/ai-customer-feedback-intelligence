@@ -1,49 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { deterministicClassify } from "../lib/ai";
+import { generateEmbeddingVector } from "../lib/search";
 
 const prisma = new PrismaClient();
 
-// Dense vector embedding generator for seed data
+// Dense vector embedding generator for seed data using standardized vector pipeline
 function generateVector(text: string): string {
-  const DIMENSIONS = 64;
-  const vector = new Array(DIMENSIONS).fill(0);
-  const normalized = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
-  const tokens = normalized.split(/\s+/).filter((t) => t.length > 1);
-
-  if (tokens.length === 0) return JSON.stringify(vector);
-
-  tokens.forEach((token, idx) => {
-    let hash = 0;
-    for (let i = 0; i < token.length; i++) {
-      hash = (hash << 5) - hash + token.charCodeAt(i);
-      hash |= 0;
-    }
-    const bucket = Math.abs(hash) % DIMENSIONS;
-    const weight = 1.0 + 1.0 / (idx + 1);
-    vector[bucket] += weight;
-
-    if (idx < tokens.length - 1) {
-      const bigram = `${token}_${tokens[idx + 1]}`;
-      let biHash = 0;
-      for (let j = 0; j < bigram.length; j++) {
-        biHash = (biHash << 5) - biHash + bigram.charCodeAt(j);
-        biHash |= 0;
-      }
-      vector[Math.abs(biHash) % DIMENSIONS] += 1.5;
-    }
-  });
-
-  let norm = 0;
-  for (let i = 0; i < DIMENSIONS; i++) norm += vector[i] * vector[i];
-  norm = Math.sqrt(norm);
-  if (norm > 0) {
-    for (let i = 0; i < DIMENSIONS; i++) {
-      vector[i] = Math.round((vector[i] / norm) * 10000) / 10000;
-    }
-  }
-
-  return JSON.stringify(vector);
+  return JSON.stringify(generateEmbeddingVector(text));
 }
 
 const RAW_FEEDBACK_ITEMS = [

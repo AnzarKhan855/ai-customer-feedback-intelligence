@@ -34,25 +34,7 @@ export async function POST(req: Request) {
       relevantFeedback = relevantFeedback.filter((f) => f.themes.includes(filterTheme));
     }
 
-    // If semantic retrieval yielded < 3 items, backfill with recent items matching keywords
-    if (relevantFeedback.length === 0) {
-      const fallbackItems = await db.feedback.findMany({
-        where: { workspaceId },
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        include: { themes: { include: { theme: true } } },
-      });
-      relevantFeedback = fallbackItems.map((f) => ({
-        id: f.id,
-        content: f.content,
-        channel: f.channel,
-        sentiment: f.sentiment,
-        sentimentScore: f.sentimentScore,
-        customerLabel: f.customerLabel || undefined,
-        score: 0.5,
-        themes: f.themes.map((t) => t.theme.name),
-      }));
-    }
+
 
     // 2. Enrich context items with emotions and severity
     const detailedFeedback = await db.feedback.findMany({
