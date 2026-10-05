@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { classifyFeedback } from "@/lib/ai";
 import { generateEmbeddingVector } from "@/lib/search";
 import { SingleFeedbackInputSchema, FeedbackChannel } from "@/lib/types";
+import { recordAuditLog } from "@/lib/audit";
 
 const SIMULATION_TEMPLATES: Record<FeedbackChannel, Array<{ content: string; label: string; product: string; region: string }>> = {
   SUPPORT_TICKET: [
@@ -383,6 +384,15 @@ export async function POST(req: Request) {
         });
       }
 
+      await recordAuditLog({
+        workspaceId,
+        actorEmail: auth.user.email || "system@loop.dev",
+        actorRole: auth.user.role,
+        action: "FEEDBACK_BULK_INGEST",
+        entity: "Feedback",
+        metadata: { simulateBatch: true, channel, count: createdItems.length },
+      });
+
       return NextResponse.json({
         success: true,
         count: createdItems.length,
@@ -489,6 +499,16 @@ export async function POST(req: Request) {
         },
       });
     }
+
+    await recordAuditLog({
+      workspaceId,
+      actorEmail: auth.user.email || "system@loop.dev",
+      actorRole: auth.user.role,
+      action: "FEEDBACK_CREATE",
+      entity: "Feedback",
+      entityId: createdFeedback.id,
+      metadata: { channel, sentiment: aiResult.sentiment, priority: aiResult.priority, severityScore: aiResult.severityScore },
+    });
 
     return NextResponse.json({
       success: true,

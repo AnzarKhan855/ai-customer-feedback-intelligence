@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { SignupSchema } from "@/lib/types";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
   try {
@@ -82,6 +83,16 @@ export async function POST(req: Request) {
         },
       });
     }
+
+    await recordAuditLog({
+      workspaceId: workspace.id,
+      actorEmail: normalizedEmail,
+      actorRole: "ADMIN",
+      action: "AUTH_SIGNUP",
+      entity: "Workspace",
+      entityId: workspace.id,
+      metadata: { workspaceName, initialRole: "ADMIN" },
+    });
 
     return NextResponse.json({
       success: true,

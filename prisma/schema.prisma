@@ -23,6 +23,7 @@ model Workspace {
   recommendations AIRecommendation[]
   actionItems     ActionItem[]
   roadmapItems    RoadmapItem[]
+  auditLogs       AuditLog[]
 }
 
 model User {
@@ -242,4 +243,22 @@ model RoadmapItem {
 
   @@index([workspaceId])
   @@index([themeId])
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  action      String    // "AUTH_LOGIN" | "FEEDBACK_CREATE" | "FEEDBACK_BULK_INGEST" | "ACTION_CREATE" | "REPORT_GENERATE" | "STATUS_UPDATE"
+  entity      String    // "Feedback" | "User" | "Report" | "ActionItem" | "Workspace"
+  entityId    String?
+  actorEmail  String
+  actorRole   String
+  metadata    String?   // Sanitized JSON context
+  workspaceId String
+  createdAt   DateTime  @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([action])
+  @@index([createdAt])
 }

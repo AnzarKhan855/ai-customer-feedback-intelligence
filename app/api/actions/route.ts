@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { CreateActionItemSchema } from "@/lib/types";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
   try {
@@ -80,6 +81,22 @@ export async function POST(req: Request) {
       });
     }
 
+    await recordAuditLog({
+      workspaceId: session.user.workspaceId,
+      actorEmail: session.user.email || "unknown",
+      actorRole: session.user.role || "MEMBER",
+      action: "ACTION_CREATE",
+      entity: "ActionItem",
+      entityId: newAction.id,
+      metadata: {
+        title: newAction.title,
+        priority: newAction.priority,
+        integration: newAction.integration,
+        externalKey: newAction.externalKey,
+        feedbackId: newAction.feedbackId,
+      },
+    });
+
     return NextResponse.json({ action: newAction }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to create action ticket" }, { status: 500 });
@@ -114,6 +131,19 @@ export async function PATCH(req: Request) {
         ...(priority && { priority }),
         ...(title && { title }),
         ...(description !== undefined && { description }),
+      },
+    });
+
+    await recordAuditLog({
+      workspaceId: session.user.workspaceId,
+      actorEmail: session.user.email || "unknown",
+      actorRole: session.user.role || "MEMBER",
+      action: "ACTION_UPDATE",
+      entity: "ActionItem",
+      entityId: updated.id,
+      metadata: {
+        status: updated.status,
+        priority: updated.priority,
       },
     });
 

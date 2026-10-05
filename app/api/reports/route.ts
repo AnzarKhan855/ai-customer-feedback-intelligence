@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { GenerateReportSchema } from "@/lib/types";
 import { generateVoCReportNarrative } from "@/lib/ai";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
   const auth = await requireAuth();
@@ -193,6 +194,20 @@ export async function POST(req: Request) {
       },
     });
 
+    await recordAuditLog({
+      workspaceId,
+      actorEmail: auth.user.email || "unknown",
+      actorRole: auth.user.role || "ANALYST",
+      action: "REPORT_GENERATE",
+      entity: "Report",
+      entityId: createdReport.id,
+      metadata: {
+        title: createdReport.title,
+        type,
+        period,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       report: {
@@ -233,6 +248,15 @@ export async function DELETE(req: Request) {
 
     await db.report.delete({
       where: { id },
+    });
+
+    await recordAuditLog({
+      workspaceId,
+      actorEmail: auth.user.email || "unknown",
+      actorRole: auth.user.role || "ADMIN",
+      action: "REPORT_DELETE",
+      entity: "Report",
+      entityId: id,
     });
 
     return NextResponse.json({ success: true, message: "Report deleted successfully" });
