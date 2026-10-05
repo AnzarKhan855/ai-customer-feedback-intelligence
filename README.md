@@ -238,16 +238,14 @@ $ npm test
 For cloud production environments:
 1. Provide a managed PostgreSQL database (Neon, Supabase, AWS RDS, Railway).
 2. Configure environment variables in your hosting provider:
-   - `DATABASE_URL` = `postgresql://user:password@host:5432/database?sslmode=require`
+   - `DATABASE_URL` = `postgresql://user:password@host-pooler:5432/database?sslmode=require` (Pooled connection)
+   - `DIRECT_URL` = `postgresql://user:password@host-direct:5432/database?sslmode=require` (Direct unpooled connection for Prisma Migrate)
    - `NEXTAUTH_SECRET` = `<cryptographically-random-32-char-string>`
-   - `NEXTAUTH_URL` = `https://feedback.yourdomain.com`
-   - `ANTHROPIC_API_KEY` = `sk-ant-...` (optional)
-3. Deploy schema using either:
+   - `NEXTAUTH_URL` = `https://feedback.yourdomain.com` (or Vercel production deployment URL)
+   - `ANTHROPIC_API_KEY` = `sk-ant-...` (optional; falls back to high-precision deterministic NLP if omitted)
+3. Deploy schema migrations to managed PostgreSQL:
    ```bash
-   # Migration deploy for production
    npm run db:deploy:prod
-   # Or direct push to managed PostgreSQL
-   npm run db:push:prod
    ```
 4. Seed initial workspace data if needed:
    ```bash

@@ -11,7 +11,6 @@ interface CreateActionModalProps {
 }
 
 export default function CreateActionModal({ isOpen, feedback, onClose, onSuccess }: CreateActionModalProps) {
-  if (isOpen === false) return null;
   const [integration, setIntegration] = useState<"LINEAR" | "JIRA" | "GITHUB">("LINEAR");
   const [title, setTitle] = useState(
     feedback ? `[Feedback] ${feedback.featureArea || "Issue"}: ${feedback.content.slice(0, 60)}...` : ""
@@ -21,6 +20,8 @@ export default function CreateActionModal({ isOpen, feedback, onClose, onSuccess
   );
   const [priority, setPriority] = useState<"URGENT" | "HIGH" | "MEDIUM" | "LOW">("HIGH");
   const [submitting, setSubmitting] = useState(false);
+
+  if (isOpen === false) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
