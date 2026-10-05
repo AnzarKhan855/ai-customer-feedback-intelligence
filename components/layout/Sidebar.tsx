@@ -13,18 +13,26 @@ import {
   Map,
   Database,
   Bell,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const CORE_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inbox", label: "Feedback Inbox", icon: Inbox },
   { href: "/trends", label: "Themes & Trends", icon: TrendingUp },
   { href: "/roadmap", label: "Product Roadmap", icon: Map },
-  { href: "/datasets", label: "Datasets & Quality", icon: Database },
-  { href: "/alerts", label: "Anomaly Alerts", icon: Bell },
+];
+
+const INTELLIGENCE_NAV_ITEMS = [
+  { href: "/pm", label: "PM Decision Hub", icon: Target },
   { href: "/ask", label: "Ask LOOP (AI)", icon: Sparkles },
   { href: "/reports", label: "VoC Reports", icon: FileText },
+  { href: "/alerts", label: "Anomaly Alerts", icon: Bell },
+  { href: "/datasets", label: "Datasets & Quality", icon: Database },
+];
+
+const SETTINGS_NAV_ITEMS = [
   { href: "/settings", label: "Workspace & Team", icon: Settings },
 ];
 
@@ -51,7 +59,7 @@ export default function Sidebar() {
         <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
           Feedback Core
         </div>
-        {NAV_ITEMS.slice(0, 4).map((item) => {
+        {CORE_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
@@ -74,7 +82,7 @@ export default function Sidebar() {
         <div className="pt-5 px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
           AI & Analytics
         </div>
-        {NAV_ITEMS.slice(4, 8).map((item) => {
+        {INTELLIGENCE_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href);
           return (
@@ -97,7 +105,7 @@ export default function Sidebar() {
         <div className="pt-5 px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
           Settings
         </div>
-        {NAV_ITEMS.slice(8).map((item) => {
+        {SETTINGS_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
@@ -117,7 +125,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
 
       {/* Footer Info */}
       <div className="p-4 border-t border-slate-800 text-xs text-slate-400 flex flex-col gap-1">

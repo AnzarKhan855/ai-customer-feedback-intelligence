@@ -16,6 +16,10 @@ describe("Feature 12: Enterprise Command Palette & Global Search Suite", () => {
       });
     }
 
+    // Clean up previous test records
+    await db.feedback.deleteMany({ where: { workspaceId: ws.id } });
+    await db.actionItem.deleteMany({ where: { workspaceId: ws.id } });
+
     // Seed feedback and action items
     await db.feedback.create({
       data: {
