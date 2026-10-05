@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import { CommandPalette } from "@/components/search/CommandPalette";
 import { Loader2 } from "lucide-react";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }

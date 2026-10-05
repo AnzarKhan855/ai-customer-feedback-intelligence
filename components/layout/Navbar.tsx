@@ -14,6 +14,7 @@ import {
   Moon,
   Sun,
   Bell,
+  Search,
 } from "lucide-react";
 import AddFeedbackModal from "@/components/feedback/AddFeedbackModal";
 import CSVUploadModal from "@/components/feedback/CSVUploadModal";
@@ -80,6 +81,20 @@ export default function Navbar() {
             </div>
           </div>
         </div>
+
+        {/* Command Palette Trigger */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
+          }}
+          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+        >
+          <Search className="w-3.5 h-3.5 text-indigo-500" />
+          <span>Quick search...</span>
+          <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-[10px] font-mono">
+            ⌘K
+          </kbd>
+        </button>
 
         {/* Ingestion & User Actions */}
         <div className="flex items-center gap-3">
