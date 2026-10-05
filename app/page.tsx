@@ -308,7 +308,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 rounded-xl bg-amber-950 flex items-center justify-center text-amber-400 border border-amber-800/60">
               <Bot className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-white">Hallucination-Free AI Analyst</h3>
+            <h3 className="text-lg font-bold text-white">Grounded AI Analyst</h3>
             <p className="text-sm text-slate-400 leading-relaxed">
               Query customer data in plain English with RAG. Every answer cites exact customer verbatims, sentiment scores, and feedback IDs.
             </p>
@@ -369,7 +369,7 @@ export default function LandingPage() {
               Executive VoC generation, automated anomaly detection, and interactive RAG conversational analyst with strict source citations.
             </p>
             <div className="text-[11px] font-mono text-slate-400 bg-slate-950 p-2 rounded border border-slate-800">
-              Zero Hallucination Guarantee
+              Strict Evidence Grounding
             </div>
           </div>
         </div>
@@ -407,7 +407,7 @@ export default function LandingPage() {
               <div>
                 <h4 className="text-sm font-bold text-white">Dual-Engine Resilience</h4>
                 <p className="text-xs text-slate-400 mt-1">
-                  Operates with Claude 3.5 Sonnet or in offline fallback mode with deterministic NLP and 100% availability.
+                  Operates with Claude 3.5 Sonnet or in offline fallback mode with deterministic NLP for resilient high availability.
                 </p>
               </div>
             </div>

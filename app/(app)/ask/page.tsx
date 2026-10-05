@@ -49,7 +49,7 @@ export default function AskLoopPage() {
 I am grounded directly in your tenant's active feedback database. You can ask me plain-English analytical questions about customer trends, emerging complaints, root causes, and strategic recommendations.
 
 **Key Analytical Guarantees:**
-- 🛡️ **Zero Hallucination:** Every claim cites verified customer feedback records.
+- 🛡️ **Grounded Retrieval:** Every claim cites verified customer feedback records.
 - 📊 **Empirical Metrics:** Quantitative stats are pre-computed directly from actual database records.
 - 🎯 **Actionable Insights:** Concrete recommendations tailored for product and engineering leadership.`,
     },
