@@ -18,6 +18,7 @@ import {
 import AddFeedbackModal from "@/components/feedback/AddFeedbackModal";
 import CSVUploadModal from "@/components/feedback/CSVUploadModal";
 import SimulateChannelModal from "@/components/feedback/SimulateChannelModal";
+import { ActivityNotificationCenter } from "@/components/layout/ActivityNotificationCenter";
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -91,16 +92,8 @@ export default function Navbar() {
             {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
           </button>
 
-          {/* Anomaly Alerts Quick Link */}
-          <Link
-            href="/alerts"
-            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors relative"
-            title="Anomaly Alerts"
-          >
-            <Bell className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500"></span>
-          </Link>
+          {/* Operational Activity Center */}
+          <ActivityNotificationCenter />
 
           {canIngest ? (
             <div className="flex items-center gap-2 mr-2">
