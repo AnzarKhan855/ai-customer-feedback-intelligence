@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import AppShell from "@/components/layout/AppShell";
 import CreateActionModal from "@/components/feedback/CreateActionModal";
+import FeedbackDetailModal from "@/components/feedback/FeedbackDetailModal";
 import {
   Search,
   Filter,
@@ -124,12 +125,51 @@ export default function InboxPage() {
     window.open(`/api/feedback/export?${params.toString()}`, "_blank");
   };
 
-  const updateStatus = async (id: string, newStatus: FeedbackStatus) => {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === items.length && items.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(items.map((i) => i.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: FeedbackStatus) => {
+    if (selectedIds.length === 0) return;
+    setBulkUpdating(true);
     try {
-      const res = await fetch(`/api/feedback/${id}`, {
+      const res = await fetch("/api/feedback", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ ids: selectedIds, status: newStatus }),
+      });
+      if (res.ok) {
+        setItems((prev) =>
+          prev.map((i) => (selectedIds.includes(i.id) ? { ...i, status: newStatus } : i))
+        );
+        setSelectedIds([]);
+      }
+    } catch (e) {
+      console.error("Bulk update failed:", e);
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const updateStatus = async (id: string, newStatus: FeedbackStatus) => {
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: newStatus }),
       });
       if (res.ok) {
         setItems((prev) =>
@@ -392,6 +432,45 @@ export default function InboxPage() {
           </div>
         </div>
 
+        {/* Bulk Triage Bar */}
+        {selectedIds.length > 0 && (
+          <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+              <span>{selectedIds.length} signal{selectedIds.length > 1 ? "s" : ""} selected for bulk triage</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleBulkStatusUpdate("REVIEWED")}
+                disabled={bulkUpdating}
+                className="px-2.5 py-1 text-xs font-semibold rounded-md bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Mark Reviewed
+              </button>
+              <button
+                onClick={() => handleBulkStatusUpdate("ACTIONED")}
+                disabled={bulkUpdating}
+                className="px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+              >
+                Mark Actioned
+              </button>
+              <button
+                onClick={() => handleBulkStatusUpdate("NEW")}
+                disabled={bulkUpdating}
+                className="px-2.5 py-1 text-xs font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors"
+              >
+                Reset to New
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline ml-2"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Feedback Items Table */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
           {loading ? (
@@ -410,6 +489,15 @@ export default function InboxPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="py-3 px-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.length === items.length && items.length > 0}
+                        onChange={toggleSelectAll}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        title="Select all on this page"
+                      />
+                    </th>
                     <th className="py-3 px-4">Feedback Content & Customer</th>
                     <th className="py-3 px-3">Channel</th>
                     <th className="py-3 px-3">Sentiment & Score</th>
@@ -430,6 +518,14 @@ export default function InboxPage() {
                           selectedItem?.id === item.id ? "bg-indigo-50/40 dark:bg-indigo-950/30" : ""
                         }`}
                       >
+                        <td className="py-3.5 px-3 w-8" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(item.id)}
+                            onChange={() => toggleSelectOne(item.id)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
                         {/* Content & Customer */}
                         <td className="py-3.5 px-4 max-w-md">
                           <p className="font-medium text-slate-900 dark:text-slate-100 line-clamp-2 leading-relaxed">
@@ -566,197 +662,14 @@ export default function InboxPage() {
         </div>
 
         {/* Detailed Feedback Inspection Slide-out Drawer */}
-        {selectedItem && (
-          <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-y-auto p-6 space-y-6 animate-in slide-in-from-right duration-200">
-            {/* Top Close Bar */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-slate-400">
-                  {selectedItem.sourceRef || `ID: ${selectedItem.id.slice(0, 8)}`}
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${getPriorityBadge(selectedItem.priority)}`}>
-                  {selectedItem.priority || "LOW"} PRIORITY
-                </span>
-              </div>
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Original Feedback Section */}
-            <div className="space-y-1.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> [FACT] Original Customer Feedback
-              </div>
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-slate-100 leading-relaxed italic">
-                "{selectedItem.content}"
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
-                <span>Channel: <strong>{selectedItem.channel?.replace("_", " ")}</strong></span>
-                {selectedItem.customerLabel && <span>Customer: <strong>{selectedItem.customerLabel}</strong></span>}
-                {selectedItem.product && <span>Product: <strong>{selectedItem.product}</strong></span>}
-                {selectedItem.region && <span>Region: <strong>{selectedItem.region}</strong></span>}
-                <span>Received: <strong>{formatDate(selectedItem.createdAt)}</strong></span>
-              </div>
-            </div>
-
-            {/* AI Model Predictions Grid */}
-            <div className="space-y-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> [MODEL PREDICTIONS] Multi-Layer AI Classification
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                {/* Sentiment */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
-                  <div className="text-[10px] font-semibold text-slate-400">Sentiment & Score</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase border ${getSentimentBadgeColor(selectedItem.sentiment)}`}>
-                      {selectedItem.sentiment}
-                    </span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                      Score: {selectedItem.sentimentScore}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">
-                    Confidence: {Math.round((selectedItem.aiConfidence || 0.85) * 100)}%
-                  </div>
-                </div>
-
-                {/* Emotion & Intent */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
-                  <div className="text-[10px] font-semibold text-slate-400">Emotion & Intent</div>
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 capitalize mt-1">
-                    {selectedItem.emotion || "Concern"} ({selectedItem.intent?.replace("_", " ") || "Complaint"})
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">
-                    Feature Area: {selectedItem.featureArea || "General"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Severity & Urgency */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-700 dark:text-slate-300">Severity Index:</span>
-                  <span className="font-mono text-indigo-600 dark:text-indigo-400">
-                    {selectedItem.severityScore ?? 25} / 100
-                  </span>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${
-                      (selectedItem.severityScore ?? 25) >= 75
-                        ? "bg-rose-500"
-                        : (selectedItem.severityScore ?? 25) >= 50
-                        ? "bg-orange-500"
-                        : "bg-emerald-500"
-                    }`}
-                    style={{ width: `${selectedItem.severityScore ?? 25}%` }}
-                  />
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
-                  {selectedItem.severityRationale || "Calculated based on emotional intensity and business criticality."}
-                </p>
-              </div>
-
-              {/* Aspect-Based Sentiment Analysis (ABSA) */}
-              {selectedItem.aspects && selectedItem.aspects.length > 0 && (
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2">
-                  <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                    Aspect-Based Sentiment Analysis (ABSA):
-                  </div>
-                  <div className="space-y-1.5">
-                    {selectedItem.aspects.map((asp: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs"
-                      >
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{asp.aspect}</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold uppercase border ${getSentimentBadgeColor(asp.sentiment)}`}>
-                            {asp.sentiment}
-                          </span>
-                          <span className="font-mono text-[10px] text-slate-400">{asp.score}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* AI Inferences & Hypotheses */}
-            <div className="space-y-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" /> [AI INFERENCE & ROOT CAUSE HYPOTHESIS]
-              </div>
-
-              {/* Churn Risk */}
-              {selectedItem.churnRiskSignal && (
-                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <ShieldAlert className="w-4 h-4 text-rose-600" />
-                    Customer Churn Signal Detected
-                  </div>
-                  <p className="text-[11px] leading-relaxed">
-                    {selectedItem.churnRiskRationale || "High risk of contract cancellation or competitor switching."}
-                  </p>
-                </div>
-              )}
-
-              {/* Root Cause Hypothesis */}
-              {selectedItem.rootCauseHypothesis && (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 space-y-1">
-                  <div className="font-bold">Contributing Technical / Process Root Cause:</div>
-                  <p className="text-[11px] leading-relaxed italic">
-                    "{selectedItem.rootCauseHypothesis}"
-                  </p>
-                  <div className="text-[10px] text-amber-600 dark:text-amber-400">
-                    *Hypothesis generated by AI. Validate with engineering logs.*
-                  </div>
-                </div>
-              )}
-
-              {/* Detected Entities */}
-              {selectedItem.detectedEntities && selectedItem.detectedEntities.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-semibold text-slate-400">Detected Entities:</span>
-                  {selectedItem.detectedEntities.map((ent: string, idx: number) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-mono border border-slate-200 dark:border-slate-700"
-                    >
-                      {ent}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Action Bar */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-              <button
-                onClick={() => handleReclassify(selectedItem.id)}
-                disabled={reclassifyingId === selectedItem.id}
-                className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                <Sparkles className={`w-3.5 h-3.5 text-indigo-600 ${reclassifyingId === selectedItem.id ? "animate-spin" : ""}`} />
-                Re-classify with AI
-              </button>
-
-              <button
-                onClick={() => setActionItemTarget(selectedItem)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
-              >
-                Convert to Linear / Jira Ticket
-              </button>
-            </div>
-          </div>
-        )}
+        <FeedbackDetailModal
+          feedback={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onStatusChange={updateStatus}
+          onReclassify={handleReclassify}
+          isReclassifying={reclassifyingId === selectedItem?.id}
+          onConvertToTicket={(fb) => setActionItemTarget(fb)}
+        />
 
         {/* Create Linear/Jira Action Item Modal */}
         {actionItemTarget && (

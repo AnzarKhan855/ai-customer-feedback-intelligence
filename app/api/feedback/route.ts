@@ -524,3 +524,68 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to ingest feedback" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request) {
+  const auth = await requireAuth(["ADMIN", "ANALYST"]);
+  if (!auth.authorized) return auth.response;
+
+  const workspaceId = auth.workspaceId!;
+
+  try {
+    const body = await req.json();
+    const { id, ids, status } = body;
+
+    const validStatuses = ["NEW", "REVIEWED", "ACTIONED"];
+    if (!status || !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: "Invalid status. Must be NEW, REVIEWED, or ACTIONED." },
+        { status: 400 }
+      );
+    }
+
+    const targetIds: string[] = [];
+    if (id && typeof id === "string") targetIds.push(id);
+    if (Array.isArray(ids)) {
+      for (const singleId of ids) {
+        if (typeof singleId === "string" && !targetIds.includes(singleId)) {
+          targetIds.push(singleId);
+        }
+      }
+    }
+
+    if (targetIds.length === 0) {
+      return NextResponse.json(
+        { error: "Provide either 'id' or 'ids' array to update." },
+        { status: 400 }
+      );
+    }
+
+    const updateResult = await db.feedback.updateMany({
+      where: {
+        workspaceId,
+        id: { in: targetIds },
+      },
+      data: {
+        status,
+      },
+    });
+
+    await recordAuditLog({
+      workspaceId,
+      actorEmail: auth.user.email || "system@loop.dev",
+      actorRole: auth.user.role,
+      action: "FEEDBACK_UPDATE",
+      entity: "Feedback",
+      metadata: { count: updateResult.count, targetIds, status },
+    });
+
+    return NextResponse.json({
+      success: true,
+      updatedCount: updateResult.count,
+      status,
+    });
+  } catch (error) {
+    console.error("Update feedback error:", error);
+    return NextResponse.json({ error: "Failed to update feedback" }, { status: 500 });
+  }
+}
