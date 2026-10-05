@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
   const auth = await requireAuth();
@@ -41,7 +42,18 @@ export async function PATCH(req: Request) {
       data: { status },
     });
 
-    return NextResponse.json({ success: true, count: updated.count });
+    const auditAction = status === "RESOLVED" ? "ALERT_RESOLVE" : "ALERT_ACKNOWLEDGE";
+    await recordAuditLog({
+      workspaceId,
+      actorEmail: auth.user.email || "system@loop.dev",
+      actorRole: auth.user.role,
+      action: auditAction,
+      entity: "Alert",
+      entityId: id,
+      metadata: { status, count: updated.count },
+    });
+
+    return NextResponse.json({ success: true, count: updated.count, status });
   } catch (error) {
     console.error("Update alert error:", error);
     return NextResponse.json({ error: "Failed to update alert" }, { status: 500 });

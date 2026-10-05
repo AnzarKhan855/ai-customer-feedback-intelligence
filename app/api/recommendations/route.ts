@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
   const auth = await requireAuth();
@@ -31,7 +32,8 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const { id, status } = body;
 
-    if (!id || !status || !["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) {
+    const validStatuses = ["OPEN", "IN_PROGRESS", "RESOLVED", "DISMISSED"];
+    if (!id || !status || !validStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid recommendation ID or status" }, { status: 400 });
     }
 
@@ -40,7 +42,17 @@ export async function PATCH(req: Request) {
       data: { status },
     });
 
-    return NextResponse.json({ success: true, count: updated.count });
+    await recordAuditLog({
+      workspaceId,
+      actorEmail: auth.user.email || "system@loop.dev",
+      actorRole: auth.user.role,
+      action: "RECOMMENDATION_UPDATE",
+      entity: "Recommendation",
+      entityId: id,
+      metadata: { status, count: updated.count },
+    });
+
+    return NextResponse.json({ success: true, count: updated.count, status });
   } catch (error) {
     console.error("Update recommendation error:", error);
     return NextResponse.json({ error: "Failed to update recommendation" }, { status: 500 });
