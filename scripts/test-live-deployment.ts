@@ -481,6 +481,59 @@ async function runFullUserJourney() {
   try {
     const unauthStats = await fetch(`${BASE_URL}/api/dashboard/stats`);
     record("9.1 Unauthenticated API Request Rejection", unauthStats.status === 401, `HTTP ${unauthStats.status} (Expected 401 Unauthorized)`);
+
+    // 9.2 SignOut Endpoint Zero-Localhost Verification
+    const csrfRes = await safeFetch(`${BASE_URL}/api/auth/csrf`);
+    const { csrfToken } = await csrfRes.json();
+    const csrfJar = new CookieJar();
+    csrfJar.absorb(csrfRes);
+
+    const signoutRes = await safeFetch(`${BASE_URL}/api/auth/signout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfJar.toHeader(),
+      },
+      body: new URLSearchParams({
+        csrfToken: csrfToken,
+        callbackUrl: "/login",
+        json: "true",
+      }).toString(),
+    });
+
+    const signoutData = await signoutRes.json();
+    const signoutUrl = signoutData.url || "";
+    const hasNoLocalhost = !signoutUrl.includes("localhost") && !signoutUrl.includes("127.0.0.1") && !signoutUrl.includes("0.0.0.0");
+    const isTargetingProduction = signoutUrl.startsWith(BASE_URL) || signoutUrl.startsWith("/");
+
+    record(
+      "9.2 SignOut Endpoint Zero-Localhost Assurance",
+      signoutRes.status === 200 && hasNoLocalhost && isTargetingProduction,
+      `HTTP ${signoutRes.status}, RedirectURL=${signoutUrl}, ZeroLocalhost=${hasNoLocalhost}`
+    );
+
+    // 9.3 SignOut Callback Sanitization (Hostile Localhost Callback Rejected)
+    const hostileSignoutRes = await safeFetch(`${BASE_URL}/api/auth/signout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: csrfJar.toHeader(),
+      },
+      body: new URLSearchParams({
+        csrfToken: csrfToken,
+        callbackUrl: "http://localhost:3000/inbox",
+        json: "true",
+      }).toString(),
+    });
+    const hostileSignoutData = await hostileSignoutRes.json();
+    const hostileUrl = hostileSignoutData.url || "";
+    const hostileBlocked = !hostileUrl.includes("localhost") && !hostileUrl.includes("127.0.0.1");
+
+    record(
+      "9.3 Hostile Localhost Callback Neutralization",
+      hostileSignoutRes.status === 200 && hostileBlocked,
+      `HTTP ${hostileSignoutRes.status}, NeutralizedURL=${hostileUrl}, LocalhostBlocked=${hostileBlocked}`
+    );
   } catch (err: any) {
     record("9.0 Logout & Protection", false, err.message);
   }
