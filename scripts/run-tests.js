@@ -7,6 +7,16 @@ execSync("npx prisma generate --schema=prisma/schema.prisma", {
   env: { ...process.env, DATABASE_URL: "file:./dev.db" },
 });
 
+// Ensure SQLite test schema exists and seed fixtures are populated
+execSync("npx prisma db push --schema=prisma/schema.prisma --skip-generate", {
+  stdio: "inherit",
+  env: { ...process.env, DATABASE_URL: "file:./dev.db" },
+});
+execSync("npx tsx prisma/seed.ts", {
+  stdio: "inherit",
+  env: { ...process.env, DATABASE_URL: "file:./dev.db" },
+});
+
 let testError = null;
 try {
   execSync("npx tsx --test tests/*.test.ts", {
