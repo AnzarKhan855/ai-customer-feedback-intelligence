@@ -35,8 +35,8 @@ jobs:
 
       - name: Validate Prisma Schemas
         run: |
-          npx prisma validate --schema=prisma/schema.prisma
-          npx prisma validate --schema=prisma/schema.postgresql.prisma
+          DATABASE_URL="file:./dev.db" npx prisma validate --schema=prisma/schema.prisma
+          DATABASE_URL="postgresql://user:pass@localhost:5432/db" DIRECT_URL="postgresql://user:pass@localhost:5432/db" npx prisma validate --schema=prisma/schema.postgresql.prisma
 
       - name: TypeScript Static Typecheck
         run: npx tsc --noEmit
