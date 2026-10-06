@@ -15,8 +15,14 @@ import {
   Bell,
   Target,
   Shield,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}
 
 const CORE_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -38,11 +44,11 @@ const SETTINGS_NAV_ITEMS = [
   { href: "/admin", label: "Admin Control", icon: Shield },
 ];
 
-export default function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 flex-shrink-0 h-screen sticky top-0">
+    <>
       {/* Brand Logo */}
       <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
         <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
@@ -68,6 +74,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 isActive
@@ -91,6 +98,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 isActive
@@ -114,6 +122,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 isActive
@@ -136,6 +145,40 @@ export default function Sidebar() {
         </div>
         <div className="text-[11px] text-slate-400">Zidio Development v1.0</div>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 bg-slate-900 text-slate-300 flex-col border-r border-slate-800 flex-shrink-0 h-screen sticky top-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+            aria-label="Close menu overlay"
+          />
+          <aside className="relative w-64 max-w-[80vw] bg-slate-900 text-slate-300 flex flex-col h-full border-r border-slate-800 z-10 shadow-2xl">
+            <div className="absolute top-4 right-3 z-20">
+              <button
+                onClick={onCloseMobile}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close navigation"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <SidebarContent onNavigate={onCloseMobile} />
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
