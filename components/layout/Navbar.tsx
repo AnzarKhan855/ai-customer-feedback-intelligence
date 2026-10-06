@@ -15,18 +15,32 @@ import {
   Sun,
   Bell,
   Search,
+  Menu,
 } from "lucide-react";
 import AddFeedbackModal from "@/components/feedback/AddFeedbackModal";
 import CSVUploadModal from "@/components/feedback/CSVUploadModal";
 import SimulateChannelModal from "@/components/feedback/SimulateChannelModal";
 import { ActivityNotificationCenter } from "@/components/layout/ActivityNotificationCenter";
 
-export default function Navbar() {
+interface NavbarProps {
+  onOpenMobileMenu?: () => void;
+}
+
+export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const { data: session } = useSession();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
   const [showSimModal, setShowSimModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut({ redirect: false, callbackUrl: "/login" });
+    } catch (err) {
+      console.error("SignOut error:", err);
+    }
+    window.location.href = "/login";
+  };
 
   useEffect(() => {
     if (localStorage.getItem("theme") === "dark") {
@@ -68,9 +82,19 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs transition-colors">
+      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs transition-colors">
         {/* Workspace Display */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onOpenMobileMenu && (
+            <button
+              onClick={onOpenMobileMenu}
+              className="md:hidden p-1.5 -ml-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           <div className="w-8 h-8 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300">
             <Building2 className="w-4 h-4" />
           </div>
@@ -111,7 +135,7 @@ export default function Navbar() {
           <ActivityNotificationCenter />
 
           {canIngest ? (
-            <div className="flex items-center gap-2 mr-2">
+            <div className="hidden sm:flex items-center gap-2 mr-2">
               <button
                 onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
@@ -143,7 +167,7 @@ export default function Navbar() {
           {/* User Profile & Role Pill */}
           <div className="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
           <div className="flex items-center gap-2.5 pl-1">
-            <div className="text-right">
+            <div className="text-right hidden sm:block">
               <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">{userName}</div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">{userEmail}</div>
             </div>
@@ -157,9 +181,10 @@ export default function Navbar() {
             </span>
 
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={handleSignOut}
               title="Sign Out"
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md transition-colors"
+              aria-label="Sign Out of LOOP"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>

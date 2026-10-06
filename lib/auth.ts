@@ -4,6 +4,85 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+export const CANONICAL_PRODUCTION_URL = "https://ai-customer-feedback-intelligence-black.vercel.app";
+
+/**
+ * Returns true if the environment is a production or cloud environment (Vercel, Railway, etc.).
+ */
+export function isProductionEnv(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    Boolean(process.env.VERCEL) ||
+    Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "development")
+  );
+}
+
+/**
+ * Resolves the canonical, trusted base URL for production and development.
+ * Strictly guarantees that production never falls back to or returns localhost.
+ */
+export function getCanonicalBaseUrl(fallbackBase?: string): string {
+  if (isProductionEnv()) {
+    // If NEXTAUTH_URL is defined and is NOT localhost, use it
+    if (
+      process.env.NEXTAUTH_URL &&
+      !process.env.NEXTAUTH_URL.includes("localhost") &&
+      !process.env.NEXTAUTH_URL.includes("127.0.0.1") &&
+      !process.env.NEXTAUTH_URL.includes("0.0.0.0")
+    ) {
+      return process.env.NEXTAUTH_URL.replace(/\/+$/, "");
+    }
+
+    // Check NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+    if (
+      publicUrl &&
+      !publicUrl.includes("localhost") &&
+      !publicUrl.includes("127.0.0.1") &&
+      !publicUrl.includes("0.0.0.0")
+    ) {
+      return publicUrl.replace(/\/+$/, "");
+    }
+
+    // Check Vercel deployment URL
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL.replace(/\/+$/, "")}`;
+    }
+
+    // Canonical production domain
+    return CANONICAL_PRODUCTION_URL;
+  }
+
+  // Local development environment
+  if (
+    fallbackBase &&
+    !fallbackBase.includes("localhost") &&
+    !fallbackBase.includes("127.0.0.1") &&
+    !fallbackBase.includes("0.0.0.0")
+  ) {
+    return fallbackBase.replace(/\/+$/, "");
+  }
+
+  return (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    fallbackBase ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+}
+
+// In production or Vercel, dynamically normalize process.env.NEXTAUTH_URL if missing or pointing to localhost
+if (isProductionEnv()) {
+  if (
+    !process.env.NEXTAUTH_URL ||
+    process.env.NEXTAUTH_URL.includes("localhost") ||
+    process.env.NEXTAUTH_URL.includes("127.0.0.1") ||
+    process.env.NEXTAUTH_URL.includes("0.0.0.0")
+  ) {
+    process.env.NEXTAUTH_URL = getCanonicalBaseUrl();
+  }
+}
+
 if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_SECRET) {
   throw new Error(
     "FATAL CONFIGURATION: NEXTAUTH_SECRET environment variable is missing in production. " +
@@ -78,13 +157,41 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      try {
-        if (new URL(url).origin === baseUrl) return url;
-      } catch {
-        // Fallback to baseUrl if parsing fails
+      const canonicalBase = getCanonicalBaseUrl(baseUrl);
+
+      // Relative path: e.g. "/login", "/dashboard"
+      if (url.startsWith("/")) {
+        return `${canonicalBase}${url}`;
       }
-      return baseUrl;
+
+      // Absolute URL: inspect and enforce production rules
+      try {
+        const parsed = new URL(url);
+
+        // In production, strictly reject and rewrite any redirect targeting localhost/127.0.0.1
+        if (
+          isProductionEnv() &&
+          (parsed.hostname === "localhost" ||
+            parsed.hostname === "127.0.0.1" ||
+            parsed.hostname === "0.0.0.0")
+        ) {
+          return `${canonicalBase}${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+
+        // Allow if origin matches canonical base or NextAuth baseUrl
+        if (parsed.origin === canonicalBase || parsed.origin === baseUrl) {
+          return url;
+        }
+
+        // Allow any official Vercel preview or production domain
+        if (parsed.hostname.endsWith(".vercel.app")) {
+          return url;
+        }
+      } catch {
+        // Fallback on URL parse error
+      }
+
+      return canonicalBase;
     },
   },
 };
